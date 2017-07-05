@@ -48,7 +48,7 @@ public class Question {
         wantsCounts = wc;
     }
     
-    @Override
+    /*@Override
     public String toString() {
         if(hasPresenters && wantsCounts){
             return String.format("Question: %s \n Score: %.1f \n Favorable Percent: %.0f%% \n Counts: %s",question, avgScore, avgPercent, getCounts());
@@ -59,7 +59,7 @@ public class Question {
         }else{
             return String.format("Participants: %.0f, Question: %s, Score: %.1f, Favorable Percent: %.0f%%",numPartic, question, avgScore, avgPercent);
         }
-    }
+    }*/
     
     public void setCounts(Map<Double,Integer> c){
         counts = c;

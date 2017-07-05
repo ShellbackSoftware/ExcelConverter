@@ -36,24 +36,10 @@ public class Presenter {
     public Presenter(){
     }
     
-    @Override
+    /*@Override
     public String toString() {
         return String.format("Presentation: %s, Question: %s, Comments: %s", name, questions, comments);
-    }
-    
-    public void printQuestions(){
-        System.out.println("Presenter: " + name + " Questions: ");
-        for(Question q : questions){
-            System.out.println(q);
-        }
-    }
-    
-    public void printComments(){
-        System.out.println("Presenter: " + name + " Comments: ");
-        for(String s : comments){
-            System.out.println(s);
-        }
-    }
+    }*/
     
     public void setComments(ArrayList<String> c){
         comments = c;
@@ -69,6 +55,22 @@ public class Presenter {
     
     public ArrayList<Question> getQuestions(){
         return questions;
+    }
+    
+    public ArrayList<String> getQuestionScore(){
+        ArrayList<String> results = new ArrayList<>();
+        for(Question q : questions){
+            results.add(Double.toString(q.getScore()));
+        }
+        return results;
+    }
+    
+    public ArrayList<String> getQuestionNames(){
+        ArrayList<String> qs = new ArrayList<>();
+        for(Question q : questions){
+            qs.add(q.getQuestion());
+        }
+        return qs;
     }
     
     public void setName(String n){

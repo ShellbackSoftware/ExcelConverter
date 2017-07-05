@@ -52,15 +52,17 @@ public final class ExcelConverter {
     
         private boolean hasPresenter = false;               // Set by user if presenters are part of the criteria
         private boolean last;                               // Used to denote the last of the data in the file
+        //Following two are unused, will be implemented later
         private boolean multSheets = false;                 // Whether or not there are multiple sheets being used
         private boolean firstSheet = true;                  // Data is on the first sheet in the book or not
+        
         private boolean wantsCounts;                        // Whether user wants to know counts per question
         private boolean hasComments;                        // Whether the sheet has comments included
         
-        private int totalSheets;                            // Total sheets in the workbook
+        private int totalSheets;                            // Total sheets in the workbook (Unused, to be implemented later)
         private double favScore;                            // User provided cutoff for the favorable score
         
-        private ArrayList<Integer> listOfSheets;            // List of sheets the data is on if not on the first sheet
+        private ArrayList<Integer> listOfSheets;            // List of sheets the data is on if not on the first sheet (Unused, to be implemented later)
         private ArrayList<Integer> particips;               // Used for the number of participants per chunk of data
         private ArrayList<Integer> endRows;                 // List that holds the values of the rows where each data ends    
         private ArrayList<Double> scores;                   // ArrayList to hold the score values
@@ -98,10 +100,10 @@ public final class ExcelConverter {
                 readExcel(path);    
                 List<Presenter> p = new ArrayList<>(Arrays.asList(presenters));
                 p.removeAll(Collections.singleton(null));
-                GenWordDoc gwd = new GenWordDoc(p, outPath, outName+".docx",hasPresenter);
+                GenWordDoc gwd = new GenWordDoc(p, outPath, outName+".docx", hasPresenter, wantsCounts, hasComments, templatePath);
             }else{
                 questions = readExcel(path);
-                GenWordDoc gwd = new GenWordDoc(questions, outPath, outName+".docx",hasPresenter);
+                GenWordDoc gwd = new GenWordDoc(questions, outPath, outName+".docx", hasPresenter, wantsCounts, hasComments, templatePath);
             }
         }
         
