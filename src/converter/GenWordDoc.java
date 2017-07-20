@@ -1,45 +1,27 @@
-/* 
-Copyright (c) [2017] 
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
- */
 package converter;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
-import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
+import org.apache.poi.xwpf.usermodel.PositionInParagraph;
+import org.apache.poi.xwpf.usermodel.TextSegement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.apache.xmlbeans.XmlCursor;
 
 /**
- * This class just handles creating & editing the word document. The lists are what is written
- * out to the Word file, and the list being used changes depending on some user input.
+ * This class just handles creating & editing the word document. It takes in the template file,
+ * then makes a copy of it and replaces the text in the copy.
  * 
  * @author shellbacksoftware@gmail.com
  */
@@ -73,139 +55,344 @@ public class GenWordDoc {
             }else{
                 presenters = que;
             }
-            boolean testing = false;
-            if(testing) createDoc();
-            else{
-                XWPFDocument templateDoc = new XWPFDocument(OPCPackage.openOrCreate(new File(templatePath)));
-                XWPFWordExtractor extractor = new XWPFWordExtractor(templateDoc);
-                String template = extractor.getText();
-                generatePages(template);
-            }
+            XWPFDocument templateDoc = new XWPFDocument(OPCPackage.openOrCreate(new File(templatePath)));
+            runProgram(templateDoc);
         } catch (IOException | InvalidFormatException ex) {
             Logger.getLogger(GenWordDoc.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
-    /* Creates the necessary amount of pages, copying the template to each */
-    private void generatePages(String temp) throws IOException{
+    /* Does the work of replacing the text in the duplicated template, and printing out the result */
+    private void runProgram(XWPFDocument doc){
         FileOutputStream out = null;
-        try {
-            XWPFDocument wdoc = new XWPFDocument();
+        try{
+            XWPFDocument newdoc = new XWPFDocument();
             out = new FileOutputStream(outputPath);
-            if(!hasPresenter){
-                for(Question q : questions){
-                    XWPFParagraph par = wdoc.createParagraph();
-                    XWPFRun r1 = par.createRun();
-                    r1.setText(temp);
-                    String newInfo = temp;
-                    XWPFParagraph c = wdoc.createParagraph();
-                    XWPFRun r2 = c.createRun();
-                }
-            }else{
+            if(hasPresenter){
                 for(Presenter p : presenters){
-                    XWPFParagraph par = wdoc.createParagraph();
-                    XWPFRun r1 = par.createRun();
-                    String newInfo = temp;
-                    // Names
-                    StringBuilder names = new StringBuilder();
-                    for (String s : p.getQuestionNames()){
-                        names.append(s);
-                        names.append("\n");
+                    List<XWPFParagraph> paras = doc.getParagraphs();
+                    for (XWPFParagraph para : paras) {
+
+                        if (!para.getParagraphText().isEmpty()) {
+                            XWPFParagraph newpara = newdoc.createParagraph();
+                            generatePages(para, newpara);
+                        }
                     }
-                    XWPFParagraph c = wdoc.createParagraph();
-                    // Ugly, but it works - gets required information to replace stuff
-                    newInfo = replacePresenter(newInfo,p.getName());
-                    newInfo = replaceQName(newInfo,names.toString());
+                // Presenter
+                replaceText(p.getName(), null, "%DELIMITER",newdoc);
+                
+                // Question Scores
+                ArrayList<String> avgScores = new ArrayList<>();
+                ArrayList<String> favScores = new ArrayList<>();
+                
+                // Used for counts
+                ArrayList<String> countKeys = new ArrayList<>();
+                ArrayList<String> countVals = new ArrayList<>();
+                
+                    for(Question q : p.getQuestions()){
+                        String qAvgScore = String.format("%.1f",q.getScore());
+                        String qFavScore = String.format("%.0f%%",q.getPercent());
+                        avgScores.add(qAvgScore);
+                        favScores.add(qFavScore);
+                        if(wantsCounts){
+                            Map<Double,Integer> counts = q.getCounts();
+                            for (Map.Entry<Double, Integer> entry : counts.entrySet()) {
+                                Double key = entry.getKey();
+                                Integer value = entry.getValue();
+                                countKeys.add(key.toString());
+                                countVals.add(value.toString());
+                            }
+                        }
+                    }
+                replaceTable(newdoc, p.getQuestionNames(), avgScores, favScores,"%INFO"); 
+                
+                if(wantsCounts){
+                    replaceCountsTable(newdoc, countKeys, countVals,"%COUNTS");
+                }
+
+                if(wantsComments){
+                    replaceText(null, p.getComments(),"%COMMENTS",newdoc);
+                }
+                
+                XWPFParagraph br = newdoc.createParagraph();
+                br.setPageBreak(true);
+                }
+                newdoc.write(out);
+            }else{
+                List<XWPFParagraph> paras = doc.getParagraphs();
+                    for (XWPFParagraph para : paras) {
+
+                        if (!para.getParagraphText().isEmpty()) {
+                            XWPFParagraph newpara = newdoc.createParagraph();
+                            generatePages(para, newpara);
+                        }
+                    }
+                ArrayList<String> qNames = new ArrayList<>();
+                for(Question q: questions){
+                    // Questions
+                    qNames.add(q.getQuestion());
+                }
+                    // Question Scores
                     ArrayList<String> avgScores = new ArrayList<>();
                     ArrayList<String> favScores = new ArrayList<>();
-                        for(Question q : p.getQuestions()){
-                            String qAvgScore = String.format("%.1f",q.getScore());
-                            String qFavScore = String.format("%.0f%%",q.getPercent());
-                            avgScores.add(qAvgScore);
-                            favScores.add(qFavScore);
+                    
+                    // Used for counts
+                    ArrayList<String> countKeys = new ArrayList<>();
+                    ArrayList<String> countVals = new ArrayList<>();
+                for (Question q : questions){
+                    String qAvgScore = String.format("%.1f",q.getScore());
+                    String qFavScore = String.format("%.0f%%",q.getPercent());
+                    avgScores.add(qAvgScore);
+                    favScores.add(qFavScore);
+                    if(wantsCounts){
+                        Map<Double,Integer> counts = q.getCounts();
+                        for (Map.Entry<Double, Integer> entry : counts.entrySet()) {
+                            Double key = entry.getKey();
+                            Integer value = entry.getValue();
+                            countKeys.add(key.toString());
+                            countVals.add(value.toString());
                         }
-                    // Average scores
-                    StringBuilder aScores = new StringBuilder();
-                    for (String s : avgScores){
-                        aScores.append(s);
-                        aScores.append("\n");
                     }
-                    // Favorable scores
-                    StringBuilder fScores = new StringBuilder();
-                    for (String s : favScores){
-                        fScores.append(s);
-                        fScores.append("\n");
-                    }
-                    newInfo = replaceScores(newInfo, aScores.toString(), fScores.toString());   
-                    String qCount = "Counts go here";
-                    ArrayList<String> qComments = p.getComments();
-                    r1.setText(newInfo);
-                    XWPFParagraph br = wdoc.createParagraph();
-                    br.setPageBreak(true);
                 }
+                replaceTable(newdoc, qNames, avgScores, favScores,"%INFO"); 
+                
+                if(wantsCounts){
+                    replaceCountsTable(newdoc, countKeys, countVals,"%COUNTS");
+                }
+                newdoc.write(out);
             }
-        wdoc.write(out);
-        }catch (IOException ex) {
+            out.flush();
+            out.close();
+        }catch(IOException ex){
             Logger.getLogger(GenWordDoc.class.getName()).log(Level.SEVERE, null, ex);
         }
-        out.close();
+    }   
+    
+    /* Generates as many pages as required from template */
+    private void generatePages(XWPFParagraph oldPar, XWPFParagraph newPar) {
+        final int DEFAULT_FONT_SIZE = 10;
+
+        for (XWPFRun run : oldPar.getRuns()) {  
+            String textInRun = run.getText(0);
+            if (textInRun == null || textInRun.isEmpty()) {
+                continue;
+            }
+            int fontSize = run.getFontSize();
+
+            XWPFRun newRun = newPar.createRun();
+
+            // Copy text
+            newRun.setText(textInRun);
+
+            // Apply the same style
+            newRun.setFontSize( ( fontSize == -1) ? DEFAULT_FONT_SIZE : run.getFontSize() );    
+            newRun.setFontFamily( run.getFontFamily() );
+            newRun.setBold( run.isBold() );
+            newRun.setItalic( run.isItalic() );
+            newRun.setStrike( run.isStrike() );
+            newRun.setColor( run.getColor() );
+        }
+    }
+
+    /* Replaces Counts table */
+    private void replaceCountsTable(XWPFDocument doc, ArrayList<String> keys, ArrayList<String> values, String find) {
+        XWPFTable table = null;
+        for (XWPFParagraph paragraph : doc.getParagraphs()) {
+            List<XWPFRun> runs = paragraph.getRuns();
+            TextSegement found = paragraph.searchText(find, new PositionInParagraph());
+            if ( found != null ) {
+                if ( found.getBeginRun() == found.getEndRun() ) {
+                 // whole search string is in one Run
+                 XmlCursor cursor = paragraph.getCTP().newCursor();
+                 table = doc.insertNewTbl(cursor);
+                 XWPFRun run = runs.get(found.getBeginRun());
+                 // Clear the keyword from doc
+                String runText = run.getText(run.getTextPosition());
+                String replaced = runText.replace(find, "");
+                run.setText(replaced, 0);
+                } else {
+                 // The search string spans over more than one Run
+                 StringBuilder b = new StringBuilder();
+                 for (int runPos = found.getBeginRun(); runPos <= found.getEndRun(); runPos++) {
+                   XWPFRun run = runs.get(runPos);
+                   b.append(run.getText(run.getTextPosition()));
+                }                       
+                 String connectedRuns = b.toString();
+                 XmlCursor cursor = paragraph.getCTP().newCursor();
+                 table = doc.insertNewTbl(cursor);
+                 String replaced = connectedRuns.replace(find, ""); // Clear search text
+
+                 // The first Run receives the replaced String of all connected Runs
+                 XWPFRun partOne = runs.get(found.getBeginRun());
+                 partOne.setText(replaced, 0);
+                 // Removing the text in the other Runs.
+                 for (int runPos = found.getBeginRun()+1; runPos <= found.getEndRun(); runPos++) {
+                   XWPFRun partNext = runs.get(runPos);
+                   partNext.setText("", 0);
+                 }
+               }
+            }     
+        }
+        fillCountsTable(table, keys, values);
     }
     
-    /* Replaces the presenter name in the template file */
-    private String replacePresenter(String targetString, String newText){
-       return targetString.replace("%PRESENTER%", newText);
+    /* Replaces questions table */
+    private void replaceTable(XWPFDocument doc, ArrayList<String> qs, ArrayList<String> avgScores, ArrayList<String> favScores, String find) {
+        XWPFTable table = null;
+        for (XWPFParagraph paragraph : doc.getParagraphs()) {
+            List<XWPFRun> runs = paragraph.getRuns();
+            TextSegement found = paragraph.searchText(find, new PositionInParagraph());
+            if ( found != null ) {
+                if ( found.getBeginRun() == found.getEndRun() ) {
+                 // whole search string is in one Run
+                 XmlCursor cursor = paragraph.getCTP().newCursor();
+                 table = doc.insertNewTbl(cursor);
+                 XWPFRun run = runs.get(found.getBeginRun());
+                 // Clear the keyword from doc
+                String runText = run.getText(run.getTextPosition());
+                String replaced = runText.replace(find, "");
+                run.setText(replaced, 0);
+                } else {
+                 // The search string spans over more than one Run
+                 StringBuilder b = new StringBuilder();
+                 for (int runPos = found.getBeginRun(); runPos <= found.getEndRun(); runPos++) {
+                   XWPFRun run = runs.get(runPos);
+                   b.append(run.getText(run.getTextPosition()));
+                }                       
+                 String connectedRuns = b.toString();
+                 XmlCursor cursor = paragraph.getCTP().newCursor();
+                 table = doc.insertNewTbl(cursor);
+                 String replaced = connectedRuns.replace(find, ""); // Clear search text
+
+                 // The first Run receives the replaced String of all connected Runs
+                 XWPFRun partOne = runs.get(found.getBeginRun());
+                 partOne.setText(replaced, 0);
+                 // Removing the text in the other Runs.
+                 for (int runPos = found.getBeginRun()+1; runPos <= found.getEndRun(); runPos++) {
+                   XWPFRun partNext = runs.get(runPos);
+                   partNext.setText("", 0);
+                 }
+               }
+            }     
+        }
+        fillTable(table, qs, avgScores, favScores);
     }
+   
     
-    /* Replaces question names */
-    private String replaceQName(String targetString, String newText){
-        return targetString.replace("%QUESTION%", newText);
+    /* Replace text in the document */
+    private long replaceText(String rep, ArrayList<String> comments, String targ, XWPFDocument doc) {
+    long count = 0;
+    String repl = "";
+    for (XWPFParagraph paragraph : doc.getParagraphs()) {
+      List<XWPFRun> runs = paragraph.getRuns();
+
+        StringBuilder sb = new StringBuilder();
+        if(comments != null){
+            for (String c : comments){
+                sb.append(c);
+                sb.append("|");
+            }
+            repl = sb.toString();
+        }else{
+            repl = rep;
+        }
+        String find = targ;
+        TextSegement found = paragraph.searchText(find, new PositionInParagraph());
+        if ( found != null ) {
+          count++;
+          if ( found.getBeginRun() == found.getEndRun() ) {
+            // whole search string is in one Run
+            XWPFRun run = runs.get(found.getBeginRun());
+            String runText = run.getText(run.getTextPosition());
+            String replaced = runText.replace(find, repl);
+            run.setText(replaced, 0);
+          } else {
+            // The search string spans over more than one Run
+            // Put the Strings together
+            StringBuilder b = new StringBuilder();
+            for (int runPos = found.getBeginRun(); runPos <= found.getEndRun(); runPos++) {
+              XWPFRun run = runs.get(runPos);
+              b.append(run.getText(run.getTextPosition()));
+            }                       
+            String connectedRuns = b.toString();
+            String replaced = connectedRuns.replace(find, repl);
+
+            // The first Run receives the replaced String of all connected Runs
+            XWPFRun partOne = runs.get(found.getBeginRun());
+            partOne.setText(replaced, 0);
+            // Removing the text in the other Runs.
+            for (int runPos = found.getBeginRun()+1; runPos <= found.getEndRun(); runPos++) {
+              XWPFRun partNext = runs.get(runPos);
+              partNext.setText("", 0);
+            }                          
+          }
+        }     
     }
-    
-    /* Replaces scores */
-    private String replaceScores(String targetString, String avgScore, String favScore){
-        String temp = targetString.replace("%FAVSCORE%", favScore);
-        return temp.replace("%AVGSCORE%", avgScore);
-    }
-    
-    /* Replaces the counts */
-    private String replaceCounts(String targetString, String newText){
-        return targetString.replace("%COUNTS%", newText);
-    }
-    
-    /* Replaces the comments */
-    private String replaceComments(String targetString, String newText){
-        return targetString.replace("%COMMENTS%", newText);
-    }
-    
-    /* Creates the document, used for testing. Will be deleted for distribution */
-    private void createDoc() throws IOException{
-        FileOutputStream out = null;
-        try {
-            XWPFDocument doc = new XWPFDocument();
-            out = new FileOutputStream(outputPath);
-            if(!hasPresenter){
-                for(Question q : questions){
-                    XWPFParagraph par = doc.createParagraph();
-                    XWPFRun r1 = par.createRun();
-                    r1.setText(q.toString());                   // Currently, question's toString
-                    XWPFParagraph c = doc.createParagraph();
-                    XWPFRun r2 = c.createRun();
-                }
+    return count;
+  }  
+
+    /* Fills counts table */
+    private void fillCountsTable(XWPFTable table, ArrayList<String> scores, ArrayList<String> values){
+        int currRow = 0;
+        scores.add(0," Score ");
+        for(String q : scores){
+            XWPFTableRow curRow = table.getRow(currRow);
+            curRow.getCell(0).setText(q);
+            if(currRow < scores.size()-1){
+                table.createRow();
+                currRow++;
             }else{
-                for(Presenter p : presenters){
-                    XWPFParagraph par = doc.createParagraph();
-                    XWPFRun r1 = par.createRun();
-                    r1.setText(p.toString());                   // Currently, question's toString
-                    XWPFParagraph c = doc.createParagraph();
-                    XWPFRun r2 = c.createRun();
-                    XWPFParagraph br = doc.createParagraph();
-                    br.setPageBreak(true);
-                }
+                currRow++;
             }
-        doc.write(out);
-        } catch (FileNotFoundException ex) {
-            Logger.getLogger(GenWordDoc.class.getName()).log(Level.SEVERE, null, ex);
         }
-        out.close();
+        currRow = 0;
+        values.add(0," Amount ");
+        for(String v : values){
+            XWPFTableRow curRow = table.getRow(currRow);
+            curRow.addNewTableCell();
+            curRow.getCell(1).setText(v);
+            currRow++;    
+        }
+    }
+    
+    /* Fills the questions table */
+    private void fillTable(XWPFTable table, ArrayList<String> qs, ArrayList<String> avgScores, ArrayList<String> favScores) {
+        int currRow = 0;
+        for(String q : qs){
+            XWPFTableRow curRow = table.getRow(currRow);
+            if(currRow == 0){
+                curRow.getCell(0).setText(" Question ");
+            }else{
+            curRow.getCell(0).setText(q);
+            }
+            if(currRow < qs.size()-1){
+                table.createRow();
+                currRow++;
+            }else{
+                currRow++;
+            }
+        }
+        currRow = 0;
+        for(String avg : avgScores){
+            XWPFTableRow curRow = table.getRow(currRow);
+            curRow.addNewTableCell();
+            if(currRow == 0){
+                curRow.getCell(1).setText(" Average Score ");
+            }else{
+                curRow.getCell(1).setText(avg);
+            }
+            currRow++;    
+        }
+        currRow = 0;
+        for(String fav : favScores){
+            XWPFTableRow curRow = table.getRow(currRow);
+            curRow.addNewTableCell();
+            if(currRow == 0){
+                curRow.getCell(2).setText(" Favorable Score ");
+            }else{
+                curRow.getCell(2).setText(fav);
+            }
+            currRow++;
+        }
     }
 }
