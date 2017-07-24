@@ -3,6 +3,7 @@ package converter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.apache.xmlbeans.XmlCursor;
 
@@ -290,7 +292,7 @@ public class GenWordDoc {
         if(comments != null){
             for (String c : comments){
                 sb.append(c);
-                sb.append("|");
+                sb.append("\n");
             }
             repl = sb.toString();
         }else{
@@ -358,13 +360,10 @@ public class GenWordDoc {
     /* Fills the questions table */
     private void fillTable(XWPFTable table, ArrayList<String> qs, ArrayList<String> avgScores, ArrayList<String> favScores) {
         int currRow = 0;
+        qs.add(0," Question ");
         for(String q : qs){
             XWPFTableRow curRow = table.getRow(currRow);
-            if(currRow == 0){
-                curRow.getCell(0).setText(" Question ");
-            }else{
             curRow.getCell(0).setText(q);
-            }
             if(currRow < qs.size()-1){
                 table.createRow();
                 currRow++;
@@ -373,26 +372,29 @@ public class GenWordDoc {
             }
         }
         currRow = 0;
+        avgScores.add(0," Average Score ");
         for(String avg : avgScores){
             XWPFTableRow curRow = table.getRow(currRow);
             curRow.addNewTableCell();
-            if(currRow == 0){
-                curRow.getCell(1).setText(" Average Score ");
-            }else{
-                curRow.getCell(1).setText(avg);
-            }
+            curRow.getCell(1).setText(avg);
             currRow++;    
         }
         currRow = 0;
+        favScores.add(0," Favorable Percent ");
         for(String fav : favScores){
             XWPFTableRow curRow = table.getRow(currRow);
             curRow.addNewTableCell();
-            if(currRow == 0){
-                curRow.getCell(2).setText(" Favorable Score ");
-            }else{
-                curRow.getCell(2).setText(fav);
-            }
+            curRow.getCell(2).setText(fav);
             currRow++;
+        }
+        for(int x = 0;x < table.getNumberOfRows(); x++){
+          XWPFTableRow row = table.getRow(x);
+          int numberOfCell = row.getTableCells().size();
+          for(int y = 0; y < numberOfCell ; y++){
+            XWPFTableCell cell = row.getCell(y);
+            
+            cell.getCTTc().addNewTcPr().addNewTcW().setW(BigInteger.valueOf(2000));
+          } 
         }
     }
 }

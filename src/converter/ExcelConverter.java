@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 
 import org.apache.poi.ss.usermodel.Cell;
@@ -46,7 +47,9 @@ public final class ExcelConverter {
         private ArrayList<Integer> endRows;                 // List that holds the values of the rows where each data ends    
         private ArrayList<Double> scores;                   // ArrayList to hold the score values
         
-        private ArrayList<String> genComments;              // List of comments for a question if there is no presenter
+        // For Vers 1.0, there's no clean way to implement comments that aren't tied to a delimiter.
+        // To be implemented in a future revision.
+       // private ArrayList<String> genComments;              // List of comments for a question if there is no presenter
         private ArrayList<String> countsColumns;            // Columns that the user wants extra info for
         private ArrayList<String> presComments;             // List of comments for a presenter
         
@@ -67,9 +70,9 @@ public final class ExcelConverter {
             wantsCounts = counts;
             countsColumns = new ArrayList<>(Arrays.asList(colCounts.split(",")));
             listOfSheets = new ArrayList<>();
-            extraColumns = new HashMap();
+            extraColumns = new TreeMap();
             scores = new ArrayList<>();
-            genComments = new ArrayList<>();
+           // genComments = new ArrayList<>();
             particips = new ArrayList<>();
             endRows = new ArrayList<>();
             dataf = new DataFormatter();   
@@ -154,21 +157,25 @@ public final class ExcelConverter {
                                 if(!(qNames[i] == null)){
                                     aQuestion = createQuestion(hasPresenter, wantsCounts, qNames[i],(sums[presenterNum]/counts[presenterNum]),
                                             ((favCounts[presenterNum]/counts[presenterNum])*100), (particips.get(presenterNum)) );
-                                    if(!hasPresenter){
+                                    /*if(!hasPresenter && hasComments && aQuestion.getQuestion().toLowerCase().contains("comment")){
                                         aQuestion.setComments(genComments);
-                                    }
-                                    if(wantsCounts && convertToIndex(countsColumns).contains(i)){
-                                        for(Double cur : scores){
-                                            addExtraInfo(cur,getScores(scores,cur));
+                                    }*/
+                                    if(wantsCounts){
+                                        ArrayList<Integer> cols = convertToIndex(countsColumns);
+                                        if(cols.contains(i+1)){
+                                            for(Double cur : scores){
+                                                addExtraInfo(cur,getScores(scores,cur));
+                                            }
+                                            TreeMap<Double, Integer> temp = new TreeMap<>(extraColumns);
+                                            aQuestion.setCounts(temp);
                                         }
-                                        aQuestion.setCounts(extraColumns);
                                     }
                                     qList.add(aQuestion);
                                     if(hasPresenter){
-                                        if(!(hasComments && aQuestion.getQuestion().contains("comment"))){
+                                        if(!(hasComments && aQuestion.getQuestion().toLowerCase().contains("comment"))){
                                             addQuestion(presents.get(presenterNum+1), aQuestion);
                                         }
-                                        if(qNames[i].contains("comment")){
+                                        if(qNames[i].toLowerCase().contains("comment")){
                                             cleanPresComments();
                                             pre.setComments(presComments);
                                         }
@@ -192,7 +199,6 @@ public final class ExcelConverter {
                                 }
                                 extraColumns = new HashMap();
                                 presComments = new ArrayList<>();
-                                genComments = new ArrayList<>();
                                 scores = new ArrayList<>();
                                 count = 0;
                                 sum = 0;
@@ -209,11 +215,12 @@ public final class ExcelConverter {
                                 if((double) getCellValue(cell) > favScore){
                                     favCount ++;                              // Favorable score
                                 }
-                            }if (!isEmpty(cell) && hasComments && cell.getCellType() == 1){
+                            }if (!isEmpty(cell) && hasComments && cell.getCellType() == 1 
+                                    && qu.toLowerCase().contains("comment")){
                                 if(hasPresenter){
                                     presComments.add(str);                        
-                                }else{
-                                    genComments.add(str);
+                                /*}else{
+                                    genComments.add(str);*/
                                 }
                             }
                         } // End row iterator
@@ -246,15 +253,6 @@ public final class ExcelConverter {
             }
             return output;
         }
-        /*public static int getColumIndex(String columnName) {
-            columnName = columnName.toUpperCase();
-            int value = 0;
-            for (int i = 0; i < columnName.length(); i++) {
-                int delta = (columnName.charAt(i)) - 64;
-                value = value*26+ delta;
-            }
-            return value-1;
-        }*/
         
         /* Adds the extra info corresponding to the columns specified */
         private void addExtraInfo(Double num, int amt){

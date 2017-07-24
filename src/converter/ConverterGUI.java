@@ -102,7 +102,6 @@ public class ConverterGUI extends javax.swing.JFrame {
 
         options.setBorder(javax.swing.BorderFactory.createTitledBorder("Options"));
 
-        FILEPATH.setText("C:\\Users\\shell\\Desktop\\Personal Projects\\ExcelToWordConverter\\TestExcelSheets\\test_TCN.xls");
         FILEPATH.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 FILEPATHActionPerformed(evt);
@@ -134,14 +133,14 @@ public class ConverterGUI extends javax.swing.JFrame {
             }
         });
 
-        colCounts.setText("B");
+        colCounts.setText("A");
         colCounts.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 colCountsActionPerformed(evt);
             }
         });
 
-        countCol.setText("If so, which column letter(s)? (Separate with commas)");
+        countCol.setText("If so, which column letter?");
 
         checkComments.setText("Would you like comments from the surveys included?");
         checkComments.addActionListener(new java.awt.event.ActionListener() {
@@ -273,7 +272,7 @@ public class ConverterGUI extends javax.swing.JFrame {
                                 .addComponent(favScoreSet, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(18, 18, 18)
                                 .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 357, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(0, 8, Short.MAX_VALUE)))
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, optionsLayout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)

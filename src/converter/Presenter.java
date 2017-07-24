@@ -3,7 +3,8 @@ package converter;
 import java.util.ArrayList;
 
 /**
- * Skeletal class to hold a presenter and their information
+ * Skeletal class to hold a delimiter (initially, a presenter, hence the class name) 
+ * and the information relating to that delimiter.
  * 
  * @author shellbacksoftware@gmail.com
  */

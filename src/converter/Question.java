@@ -14,14 +14,15 @@ public class Question {
     private double avgScore;                    // Average score of all surveys
     private double avgPercent;                  // Not actually average, favorable percentage of surveys 
     private double numPartic;                   // Number of participants
-    private ArrayList<String> coms;             // List of comments for specific questions
+    // To be implemented in a later revision
+    // private ArrayList<String> coms;             // List of comments for specific questions
     private boolean hasPresenters;
     private Map<Double, Integer> counts;
     private boolean wantsCounts;
     
     /* Default constructor */
     public Question(boolean hp, boolean wc){
-        coms = new ArrayList<>();
+        //coms = new ArrayList<>();
         counts = new HashMap();
         hasPresenters = hp;
         wantsCounts = wc;
@@ -35,13 +36,13 @@ public class Question {
         return counts;
     }
     
-    public ArrayList<String> getComments(){
+    /*public ArrayList<String> getComments(){
         return coms;
     }
     
     public void setComments(ArrayList<String> in){
         coms = in;
-    }
+    }*/
     
     public void setNumberParts(double p){
         numPartic = p;
