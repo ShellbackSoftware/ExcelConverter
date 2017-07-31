@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 
 import org.apache.poi.ss.usermodel.Cell;
@@ -58,6 +60,7 @@ public final class ExcelConverter {
         private Map<String, ArrayList<Question>> qMap;      // Connects lists of questions to each presenter
         private Map<Double, Integer> extraColumns;          // Stores the counts of each value
 
+        private ConverterGUI gui;                           // Used for exception handling
         
         /* Constructor, initializes everything */
         public ExcelConverter(String path, boolean presenter, boolean multiSheets, boolean fSheet, String sheets, double favoScore, 
@@ -77,6 +80,7 @@ public final class ExcelConverter {
             endRows = new ArrayList<>();
             dataf = new DataFormatter();   
             qMap = new HashMap();
+            gui = new ConverterGUI();
             ArrayList<Question> questions = new ArrayList<>();
             if(hasPresenter){
                 readExcel(path);    
@@ -100,6 +104,7 @@ public final class ExcelConverter {
             else{
                 totalSheets = 1;
             }
+            try{
             // Start sheet loop
             for(int s = 0; s < totalSheets; s++){
                 Sheet sheet = workbook.getSheetAt(s);               // Loop through each sheet in the workbook
@@ -162,6 +167,10 @@ public final class ExcelConverter {
                                     }*/
                                     if(wantsCounts){
                                         ArrayList<Integer> cols = convertToIndex(countsColumns);
+                                        System.out.println(cols);
+                                        if(cols.get(0) == 0){
+                                            throw new EmptyCountsException("Counts is empty");
+                                            }
                                         if(cols.contains(i+1)){
                                             for(Double cur : scores){
                                                 addExtraInfo(cur,getScores(scores,cur));
@@ -174,7 +183,7 @@ public final class ExcelConverter {
                                     if(hasPresenter){
                                         if(!(hasComments && aQuestion.getQuestion().toLowerCase().contains("comment"))){
                                             addQuestion(presents.get(presenterNum+1), aQuestion);
-                                        }
+                                        } 
                                         if(qNames[i].toLowerCase().contains("comment")){
                                             cleanPresComments();
                                             pre.setComments(presComments);
@@ -215,10 +224,10 @@ public final class ExcelConverter {
                                 if((double) getCellValue(cell) > favScore){
                                     favCount ++;                              // Favorable score
                                 }
-                            }if (!isEmpty(cell) && hasComments && cell.getCellType() == 1 
-                                    && qu.toLowerCase().contains("comment")){
+                            }
+                            if (!isEmpty(cell) && hasComments && cell.getCellType() == 1){
                                 if(hasPresenter){
-                                    presComments.add(str);                        
+                                    presComments.add(str);
                                 /*}else{
                                     genComments.add(str);*/
                                 }
@@ -233,6 +242,9 @@ public final class ExcelConverter {
                 }
             } // End sheets loop
                         
+        }catch (EmptyCountsException ex) {
+            gui.printError("Empty Counts Box Error","Please enter what column you want counts for.");
+        }
             workbook.close();
             input.close();
 

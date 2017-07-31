@@ -3,23 +3,37 @@ package converter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.poi.POIXMLException;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.PositionInParagraph;
 import org.apache.poi.xwpf.usermodel.TextSegement;
+import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFNumbering;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.apache.xmlbeans.XmlCursor;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTAbstractNum;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTPageMar;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTVerticalJc;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STHeightRule;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STVerticalJc;
 
 /**
  * This class just handles creating & editing the word document. It takes in the template file,
@@ -37,6 +51,8 @@ public class GenWordDoc {
     private boolean wantsCounts;
     private boolean wantsComments;
     
+    private ConverterGUI gui = new ConverterGUI();
+    
     
     /* Constructor. Initializations throw exceptions, so it looks messier than it is */
     public GenWordDoc(List que, String path, String name, Boolean presenter, boolean counts, 
@@ -46,6 +62,9 @@ public class GenWordDoc {
         wantsComments = comments;
         templatePath = tPath;
         try {
+            if(name.equals(".docx")){
+            throw new EmptyFileNameException("The file name can't be blank!");
+            }   
              if(!(path.equals(""))){
                 outputPath = path.replace("\\", "/");
                 outputPath = outputPath+"/"+name;
@@ -57,11 +76,19 @@ public class GenWordDoc {
             }else{
                 presenters = que;
             }
+            
             XWPFDocument templateDoc = new XWPFDocument(OPCPackage.openOrCreate(new File(templatePath)));
             runProgram(templateDoc);
-        } catch (IOException | InvalidFormatException ex) {
-            Logger.getLogger(GenWordDoc.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        } catch (IOException ex ) {
+            gui.printError("Output File Path Error", "The output file path is incorrect. Please verify that the location exists.");
+        } catch( InvalidFormatException ex){
+            gui.printError("InvalidFormatException", "Invalid format");
+        } catch(POIXMLException ex){
+            gui.printError("Template Path error",
+                    "The template file path appears to be incorrect. Please verify that the path is correct, and that the file exists.");
+        } catch(EmptyFileNameException ex){
+            gui.printError("Output File Name Error", "Please enter a file name for the output file.");
+        }        
     }
     
     /* Does the work of replacing the text in the duplicated template, and printing out the result */
@@ -69,6 +96,13 @@ public class GenWordDoc {
         FileOutputStream out = null;
         try{
             XWPFDocument newdoc = new XWPFDocument();
+            // Sets page margins; 720L = 1/2"
+            CTSectPr sectPr = newdoc.getDocument().getBody().addNewSectPr();
+            CTPageMar pageMar = sectPr.addNewPgMar();
+            pageMar.setLeft(BigInteger.valueOf(1080L));
+            //pageMar.setTop(BigInteger.valueOf(360L));
+            pageMar.setRight(BigInteger.valueOf(1080L));
+            //pageMar.setBottom(BigInteger.valueOf(360L));
             out = new FileOutputStream(outputPath);
             if(hasPresenter){
                 for(Presenter p : presenters){
@@ -81,7 +115,7 @@ public class GenWordDoc {
                         }
                     }
                 // Presenter
-                replaceText(p.getName(), null, "%DELIMITER",newdoc);
+                replaceText(p.getName(),"%DELIMITER",newdoc);
                 
                 // Question Scores
                 ArrayList<String> avgScores = new ArrayList<>();
@@ -113,7 +147,7 @@ public class GenWordDoc {
                 }
 
                 if(wantsComments){
-                    replaceText(null, p.getComments(),"%COMMENTS",newdoc);
+                    replaceComments(p.getComments(),"%COMMENTS",newdoc);
                 }
                 
                 XWPFParagraph br = newdoc.createParagraph();
@@ -165,8 +199,8 @@ public class GenWordDoc {
             }
             out.flush();
             out.close();
-        }catch(IOException ex){
-            Logger.getLogger(GenWordDoc.class.getName()).log(Level.SEVERE, null, ex);
+        }catch (IOException ex ) {
+            gui.printError("Output File Path Error", "The output file path is incorrect. Please verify that the location exists.");
         }
     }   
     
@@ -196,6 +230,77 @@ public class GenWordDoc {
         }
     }
 
+    
+    /* Currently, comments are a table with no border */
+    private void replaceComments(ArrayList<String> comments, String find, XWPFDocument doc) {
+        XWPFTable table = null;
+        for (XWPFParagraph paragraph : doc.getParagraphs()) {
+            List<XWPFRun> runs = paragraph.getRuns();
+            TextSegement found = paragraph.searchText(find, new PositionInParagraph());
+            if ( found != null ) {
+                if ( found.getBeginRun() == found.getEndRun() ) {
+                 // whole search string is in one Run
+                 XmlCursor cursor = paragraph.getCTP().newCursor();
+                 table = doc.insertNewTbl(cursor);
+
+                 CTAbstractNum cTAbstractNum = CTAbstractNum.Factory.newInstance();
+                 cTAbstractNum.setAbstractNumId(BigInteger.valueOf(0));
+
+                 // Bullet list
+                CTLvl cTLvl = cTAbstractNum.addNewLvl();
+                cTLvl.addNewNumFmt().setVal(STNumberFormat.BULLET);
+                cTLvl.addNewLvlText().setVal("•");
+                
+                XWPFAbstractNum abstractNum = new XWPFAbstractNum(cTAbstractNum);
+
+                XWPFNumbering numbering = doc.createNumbering();
+
+                BigInteger abstractNumID = numbering.addAbstractNum(abstractNum);
+
+                BigInteger numID = numbering.addNum(abstractNumID);
+
+                for (String string : comments) {
+                    XWPFTableRow lnewRow = table.createRow();
+                    XWPFTableCell lnewCell = lnewRow.getCell(0);
+                    XWPFParagraph lnewPara =lnewCell.getParagraphs().get(0);
+                    lnewPara.setNumID(numID);
+                    XWPFRun lnewRun = lnewPara.createRun();
+                    lnewRun.setText(string); 
+                }
+                 
+                 XWPFRun run = runs.get(found.getBeginRun());
+                 // Clear the keyword from doc
+                String runText = run.getText(run.getTextPosition());
+                String replaced = runText.replace(find, "");
+                run.setText(replaced, 0);
+                } else {
+                 // The search string spans over more than one Run
+                 StringBuilder b = new StringBuilder();
+                 for (int runPos = found.getBeginRun(); runPos <= found.getEndRun(); runPos++) {
+                   XWPFRun run = runs.get(runPos);
+                   b.append(run.getText(run.getTextPosition()));
+                }                       
+                 String connectedRuns = b.toString();
+                 XmlCursor cursor = paragraph.getCTP().newCursor();
+                 table = doc.insertNewTbl(cursor);
+                 int pad = (int) (.1 * 1440);
+                 table.setCellMargins(0, pad, 0, pad);  // Top, left, bottom, right
+                 String replaced = connectedRuns.replace(find, ""); // Clear search text
+
+                 // The first Run receives the replaced String of all connected Runs
+                 XWPFRun partOne = runs.get(found.getBeginRun());
+                 partOne.setText(replaced, 0);
+                 // Removing the text in the other Runs.
+                 for (int runPos = found.getBeginRun()+1; runPos <= found.getEndRun(); runPos++) {
+                   XWPFRun partNext = runs.get(runPos);
+                   partNext.setText("", 0);
+                 }
+               }
+            }
+        }
+        formatComments(table);
+    }
+    
     /* Replaces Counts table */
     private void replaceCountsTable(XWPFDocument doc, ArrayList<String> keys, ArrayList<String> values, String find) {
         XWPFTable table = null;
@@ -222,6 +327,8 @@ public class GenWordDoc {
                  String connectedRuns = b.toString();
                  XmlCursor cursor = paragraph.getCTP().newCursor();
                  table = doc.insertNewTbl(cursor);
+                 int pad = (int) (.1 * 1440);
+                 table.setCellMargins(0, pad, 0, pad); // Top, left, bottom, right
                  String replaced = connectedRuns.replace(find, ""); // Clear search text
 
                  // The first Run receives the replaced String of all connected Runs
@@ -249,6 +356,8 @@ public class GenWordDoc {
                  // whole search string is in one Run
                  XmlCursor cursor = paragraph.getCTP().newCursor();
                  table = doc.insertNewTbl(cursor);
+                 int pad = (int) (.1 * 1440);
+                 table.setCellMargins(0, pad, 0, pad); // Top, left, bottom, right
                  XWPFRun run = runs.get(found.getBeginRun());
                  // Clear the keyword from doc
                 String runText = run.getText(run.getTextPosition());
@@ -264,6 +373,8 @@ public class GenWordDoc {
                  String connectedRuns = b.toString();
                  XmlCursor cursor = paragraph.getCTP().newCursor();
                  table = doc.insertNewTbl(cursor);
+                 int pad = (int) (.1 * 1440);
+                 table.setCellMargins(0, pad, 0, pad);  // Top, left, bottom, right
                  String replaced = connectedRuns.replace(find, ""); // Clear search text
 
                  // The first Run receives the replaced String of all connected Runs
@@ -282,26 +393,12 @@ public class GenWordDoc {
    
     
     /* Replace text in the document */
-    private long replaceText(String rep, ArrayList<String> comments, String targ, XWPFDocument doc) {
-    long count = 0;
-    String repl = "";
+    private void replaceText(String repl, String targ, XWPFDocument doc) {
     for (XWPFParagraph paragraph : doc.getParagraphs()) {
       List<XWPFRun> runs = paragraph.getRuns();
-
-        StringBuilder sb = new StringBuilder();
-        if(comments != null){
-            for (String c : comments){
-                sb.append(c);
-                sb.append("\n");
-            }
-            repl = sb.toString();
-        }else{
-            repl = rep;
-        }
         String find = targ;
         TextSegement found = paragraph.searchText(find, new PositionInParagraph());
         if ( found != null ) {
-          count++;
           if ( found.getBeginRun() == found.getEndRun() ) {
             // whole search string is in one Run
             XWPFRun run = runs.get(found.getBeginRun());
@@ -310,7 +407,6 @@ public class GenWordDoc {
             run.setText(replaced, 0);
           } else {
             // The search string spans over more than one Run
-            // Put the Strings together
             StringBuilder b = new StringBuilder();
             for (int runPos = found.getBeginRun(); runPos <= found.getEndRun(); runPos++) {
               XWPFRun run = runs.get(runPos);
@@ -330,13 +426,12 @@ public class GenWordDoc {
           }
         }     
     }
-    return count;
   }  
 
     /* Fills counts table */
     private void fillCountsTable(XWPFTable table, ArrayList<String> scores, ArrayList<String> values){
         int currRow = 0;
-        scores.add(0," Score ");
+        scores.add(0,"Response");
         for(String q : scores){
             XWPFTableRow curRow = table.getRow(currRow);
             curRow.getCell(0).setText(q);
@@ -348,19 +443,21 @@ public class GenWordDoc {
             }
         }
         currRow = 0;
-        values.add(0," Amount ");
+        values.add(0,"Votes");
         for(String v : values){
             XWPFTableRow curRow = table.getRow(currRow);
             curRow.addNewTableCell();
             curRow.getCell(1).setText(v);
             currRow++;    
         }
+        // Format the table
+        formatTable(table,true);
     }
     
     /* Fills the questions table */
     private void fillTable(XWPFTable table, ArrayList<String> qs, ArrayList<String> avgScores, ArrayList<String> favScores) {
         int currRow = 0;
-        qs.add(0," Question ");
+        qs.add(0,"Question");
         for(String q : qs){
             XWPFTableRow curRow = table.getRow(currRow);
             curRow.getCell(0).setText(q);
@@ -372,7 +469,7 @@ public class GenWordDoc {
             }
         }
         currRow = 0;
-        avgScores.add(0," Average Score ");
+        avgScores.add(0,"Average Score");
         for(String avg : avgScores){
             XWPFTableRow curRow = table.getRow(currRow);
             curRow.addNewTableCell();
@@ -380,21 +477,55 @@ public class GenWordDoc {
             currRow++;    
         }
         currRow = 0;
-        favScores.add(0," Favorable Percent ");
+        favScores.add(0,"Favorable Percent");
         for(String fav : favScores){
             XWPFTableRow curRow = table.getRow(currRow);
             curRow.addNewTableCell();
             curRow.getCell(2).setText(fav);
             currRow++;
         }
-        for(int x = 0;x < table.getNumberOfRows(); x++){
-          XWPFTableRow row = table.getRow(x);
-          int numberOfCell = row.getTableCells().size();
-          for(int y = 0; y < numberOfCell ; y++){
-            XWPFTableCell cell = row.getCell(y);
-            
-            cell.getCTTc().addNewTcPr().addNewTcW().setW(BigInteger.valueOf(2000));
-          } 
+        // Format the table
+        formatTable(table,false);
+    }
+    
+    /* Formats the comments */
+    private void formatComments(XWPFTable table){
+        table.setWidth(5000);
+        table.removeRow(0);     // Deletes empty first row
+        table.getCTTbl().getTblPr().unsetTblBorders();
+        for (XWPFTableRow row : table.getRows()){
+            row.setHeight(360);
+            row.getCtRow().getTrPr().getTrHeightArray(0).setHRule(STHeightRule.EXACT);
         }
+    }
+    
+    // Formats the table to make it purdy.
+    private void formatTable(XWPFTable table, boolean counts){
+    List<XWPFTableRow> rows = table.getRows();          // List of rows in table
+    int rowCt = 0;
+    int colCt = 0;
+    for (XWPFTableRow row : rows) {
+        row.setHeight(360);
+        row.getCtRow().getTrPr().getTrHeightArray(0).setHRule(STHeightRule.EXACT); //set w:hRule="exact"
+        List<XWPFTableCell> cells = row.getTableCells();        // Cells in this row
+            for (XWPFTableCell cell : cells) {
+                CTTcPr tcpr = cell.getCTTc().addNewTcPr();      // get a table cell properties element (tcPr)
+                CTVerticalJc va = tcpr.addNewVAlign();  
+                va.setVal(STVerticalJc.CENTER);                 // Center vert align
+
+                XWPFParagraph para = cell.getParagraphs().get(0);   // First paragraph in cell
+                if (rowCt == 0) {          
+                   para.setAlignment(ParagraphAlignment.CENTER);
+                }else if (colCt == 0 && !counts){
+                   para.setAlignment(ParagraphAlignment.LEFT);
+                }else{
+                   para.setAlignment(ParagraphAlignment.RIGHT);
+                }
+                 cell.getCTTc().addNewTcPr().addNewTcW().setW(BigInteger.valueOf(2000));
+                 colCt++;
+            } // End cell	
+            rowCt++;
+            colCt=0;
+        } // End row
     }
 }

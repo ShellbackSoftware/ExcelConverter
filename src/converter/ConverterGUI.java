@@ -68,7 +68,6 @@ public class ConverterGUI extends javax.swing.JFrame {
         browseTemplate = new javax.swing.JButton();
         templateDoc = new javax.swing.JTextField();
         jLabel3 = new javax.swing.JLabel();
-        jLabel1 = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -102,6 +101,7 @@ public class ConverterGUI extends javax.swing.JFrame {
 
         options.setBorder(javax.swing.BorderFactory.createTitledBorder("Options"));
 
+        FILEPATH.setText("C:\\Users\\shell\\Desktop\\Personal Projects\\ExcelToWordConverter\\TestExcelSheets\\delimiter.xlsx");
         FILEPATH.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 FILEPATHActionPerformed(evt);
@@ -126,7 +126,7 @@ public class ConverterGUI extends javax.swing.JFrame {
             }
         });
 
-        countsCheck.setText("Would you like extra information on any questions?*");
+        countsCheck.setText("Would you like the counts for any questions?");
         countsCheck.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 countsCheckActionPerformed(evt);
@@ -198,7 +198,7 @@ public class ConverterGUI extends javax.swing.JFrame {
         });
 
         jLabel4.setFont(new java.awt.Font("sansserif", 0, 14)); // NOI18N
-        jLabel4.setText("<html>Template Word file:<sup>‡</sup> </html>");
+        jLabel4.setText("<html>Template Word file:* </html>");
 
         browseTemplate.setText("Browse...");
         browseTemplate.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -208,7 +208,7 @@ public class ConverterGUI extends javax.swing.JFrame {
             }
         });
 
-        templateDoc.setText("C:\\Users\\shell\\Desktop\\Personal Projects\\ExcelToWordConverter\\Templates\\NoDelimTemplate.docx");
+        templateDoc.setText("C:\\Users\\shell\\Desktop\\Personal Projects\\ExcelToWordConverter\\Templates\\DelimiterTemplate.docx");
         templateDoc.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 templateDocActionPerformed(evt);
@@ -332,26 +332,21 @@ public class ConverterGUI extends javax.swing.JFrame {
                 .addComponent(runButton))
         );
 
-        jLabel1.setText("* Extra information means the counts of each score; i.e. 30 people selected 5");
-
-        jLabel5.setText("<html><sup>‡</sup> The Word file has certain keywords the program searches for; see the readme if you'd like to make a custom one.</html>");
+        jLabel5.setText("<html>* The Word file has certain keywords the program searches for; see the readme for examples.</html>");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addGap(10, 10, 10)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(31, 31, 31)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel1)
-                            .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(10, 10, 10)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(instructionsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(options, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                        .addGap(6, 6, 6)
+                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addComponent(instructionsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(options, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
@@ -362,8 +357,6 @@ public class ConverterGUI extends javax.swing.JFrame {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(options, javax.swing.GroupLayout.PREFERRED_SIZE, 325, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel1)
-                .addGap(4, 4, 4)
                 .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 21, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -376,6 +369,11 @@ public class ConverterGUI extends javax.swing.JFrame {
         // Autogenerated code, no need to do anything here
     }//GEN-LAST:event_templateDocActionPerformed
 
+    /* */
+    public void printError(String title, String error){
+        JOptionPane.showMessageDialog(null,error, title, JOptionPane.WARNING_MESSAGE);
+    }
+    
     /* Opens file chooser for the target Word doc */
     private void browseTemplateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_browseTemplateActionPerformed
         JFileChooser chooser = new JFileChooser();
@@ -502,11 +500,13 @@ public class ConverterGUI extends javax.swing.JFrame {
      * @param args the command line arguments
      */
     public static void main(String args[]) {
+        
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
          * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
          */
+        ConverterGUI gui = new ConverterGUI();
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -515,11 +515,11 @@ public class ConverterGUI extends javax.swing.JFrame {
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(ConverterGUI.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            gui.printError("ClassNotFound Exception", "Class not found, something went wrong!");
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(ConverterGUI.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            gui.printError("Instantiation Exception", "A class couldn't be instantiated. Woops!");
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(ConverterGUI.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            gui.printError("IllegalAccess Exception", "A class has been changed somehow. Sorry!");
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
             java.util.logging.Logger.getLogger(ConverterGUI.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
@@ -546,7 +546,6 @@ public class ConverterGUI extends javax.swing.JFrame {
     private javax.swing.JLabel fileLabel;
     private javax.swing.JLabel instructions;
     private javax.swing.JPanel instructionsPanel;
-    private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
