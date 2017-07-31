@@ -101,7 +101,6 @@ public class ConverterGUI extends javax.swing.JFrame {
 
         options.setBorder(javax.swing.BorderFactory.createTitledBorder("Options"));
 
-        FILEPATH.setText("C:\\Users\\shell\\Desktop\\Personal Projects\\ExcelToWordConverter\\TestExcelSheets\\delimiter.xlsx");
         FILEPATH.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 FILEPATHActionPerformed(evt);
@@ -208,7 +207,6 @@ public class ConverterGUI extends javax.swing.JFrame {
             }
         });
 
-        templateDoc.setText("C:\\Users\\shell\\Desktop\\Personal Projects\\ExcelToWordConverter\\Templates\\DelimiterTemplate.docx");
         templateDoc.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 templateDocActionPerformed(evt);

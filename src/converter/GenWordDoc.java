@@ -493,10 +493,6 @@ public class GenWordDoc {
         table.setWidth(5000);
         table.removeRow(0);     // Deletes empty first row
         table.getCTTbl().getTblPr().unsetTblBorders();
-        for (XWPFTableRow row : table.getRows()){
-            row.setHeight(360);
-            row.getCtRow().getTrPr().getTrHeightArray(0).setHRule(STHeightRule.EXACT);
-        }
     }
     
     // Formats the table to make it purdy.
