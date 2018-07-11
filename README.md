@@ -1,14 +1,18 @@
 # ExcelConverter
 To get started, there are a few example files packaged with this program. 
 
-If you want to see an example Excel input file, simply go to Excel2Word Converter/TestExcelSheets. The first 
+If you want to see an example Excel input file, simply go to app/TestExcelSheets. The first 
 file, delimiter.xlsx, is an example of a file with delimiters. For example, presenters at a conference, where
 each chunk of data correlates to a specific presenter. The second file, nodelimiter.xls, is an example of a 
 file with only questions. 
 
-Example templates can be found in Excel2Word Converter/Templates. There's an example of a template while using
+Example templates can be found in app/Templates. There's an example of a template while using
 a delimiter, and an example without a delimiter. They're just generic templates to show how to use the search
 strings, along with some lorem ipsum text for filler.
+
+In order to run the program, just download what's in the app/Converter folder. Then, just double click on 
+ExcelConverter.jar to run it. If you're missing the "lib" folder, or the "lib" folder is in another location, 
+the program might not run.
 
 Now, on to preparing the data:
 For the Excel file, there are two possible formats. One with delimiters, and one without. 
